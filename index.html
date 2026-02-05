@@ -3315,16 +3315,22 @@ addMarker(latlng, accuracy = null) {
     this.map.setView(latlng, Math.max(this.map.getZoom(), 15));
 },
 
-// Get user's current location
+// Get user's current location - FIXED VERSION
 getUserLocation() {
     if (!navigator.geolocation) {
         this.showLocationStatus('Geolocation is not supported by your browser', 'error');
         return;
     }
 
+    // Prevent multiple location requests
+    if (this.isLocating) {
+        this.showLocationStatus('Already getting location...', 'info');
+        return;
+    }
+
     this.isLocating = true;
     const locateBtn = document.getElementById('use-my-location');
-    const originalHTML = locateBtn.innerHTML;  // Store the HTML including the icon
+    const originalHTML = locateBtn.innerHTML;
     locateBtn.innerHTML = '<span class="loading"></span> Locating...';
     locateBtn.disabled = true;
 
@@ -3338,48 +3344,66 @@ getUserLocation() {
             
             console.log('Location acquired:', { lat, lng, accuracy });
             
+            // Make sure map is initialized and visible
+            if (!this.map) {
+                this.initMap();
+            }
+            
             // Show map if not already shown
             if (!this.mapEnabled) {
                 this.toggleMap(true);
             }
             
-            // Initialize map if not already done
-            if (!this.map) {
-                this.initMap();
-            }
+            // Small delay to ensure map is fully loaded
+            setTimeout(() => {
+                // Add marker at user's location
+                this.addMarker([lat, lng], accuracy);
+                
+                // Update status
+                const accuracyMsg = accuracy ? ` (accuracy: ±${Math.round(accuracy)}m)` : '';
+                this.showLocationStatus(`Location acquired${accuracyMsg}`, 'success');
+                
+                // Update location text field
+                const latlng = [lat, lng];
+                const latFormatted = latlng[0].toFixed(6);
+                const lngFormatted = latlng[1].toFixed(6);
+                document.getElementById('location').value = `Lat: ${latFormatted}, Lng: ${lngFormatted}`;
+                
+                // Center map on marker
+                this.map.setView(latlng, Math.max(this.map.getZoom(), 15));
+            }, 100);
             
-            // Add marker at user's location
-            this.addMarker([lat, lng], accuracy);
-            
-            this.showLocationStatus(`Location acquired (accuracy: ±${Math.round(accuracy)}m)`, 'success');
             this.isLocating = false;
-            locateBtn.innerHTML = originalHTML;  // Restore original HTML with icon
+            locateBtn.innerHTML = originalHTML;
             locateBtn.disabled = false;
         },
         (error) => {
             console.error('Geolocation error:', error);
             let message = 'Unable to get your location';
+            
             switch(error.code) {
                 case error.PERMISSION_DENIED:
-                    message = 'Location permission denied. Please enable location services for this site.';
+                    message = 'Location permission denied. Please enable location services for this site in your browser settings.';
                     break;
                 case error.POSITION_UNAVAILABLE:
-                    message = 'Location information unavailable.';
+                    message = 'Location information unavailable. Please check your device location settings.';
                     break;
                 case error.TIMEOUT:
                     message = 'Location request timed out. Please try again.';
                     break;
+                default:
+                    message = 'An unknown error occurred while getting location.';
             }
             
             this.showLocationStatus(message, 'error');
             this.isLocating = false;
-            locateBtn.innerHTML = originalHTML;  // Restore original HTML with icon
+            locateBtn.innerHTML = originalHTML;
             locateBtn.disabled = false;
         },
         {
             enableHighAccuracy: true,
-            timeout: 10000,  // 10 seconds
-            maximumAge: 60000  // Cache location for 1 minute
+            timeout: 15000,  // Increased to 15 seconds
+            maximumAge: 0    // Don't use cached location
         }
     );
 },
