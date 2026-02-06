@@ -1,3 +1,8 @@
+Looking at your code, I can see the issue with the "Use My Location" function. The problem is in the getUserLocation() method. The addMarker() function expects a latlng object or array, but you're passing [lat, lng] directly which should work, but there are several other issues.
+
+Here's the fixed getUserLocation() function:
+
+```javascript
 // Get user's current location - FIXED VERSION
 getUserLocation() {
     if (!navigator.geolocation) {
@@ -19,15 +24,24 @@ getUserLocation() {
 
     this.showLocationStatus('Getting your location...', 'info');
 
+    // Clear any existing location status after 30 seconds timeout
+    const timeoutId = setTimeout(() => {
+        if (this.isLocating) {
+            this.showLocationStatus('Location request is taking longer than expected. Please ensure location services are enabled.', 'warning');
+        }
+    }, 30000);
+
     navigator.geolocation.getCurrentPosition(
         (position) => {
+            clearTimeout(timeoutId);
+            
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             const accuracy = position.coords.accuracy;
             
             console.log('Location acquired:', { lat, lng, accuracy });
             
-            // Make sure map is initialized and visible
+            // Make sure map is initialized
             if (!this.map) {
                 this.initMap();
             }
@@ -37,36 +51,55 @@ getUserLocation() {
                 this.toggleMap(true);
             }
             
-            // Small delay to ensure map is fully loaded
+            // Ensure map is properly initialized before adding marker
             setTimeout(() => {
+                if (!this.map) {
+                    console.error('Map not initialized');
+                    this.showLocationStatus('Map initialization failed', 'error');
+                    this.isLocating = false;
+                    locateBtn.innerHTML = originalHTML;
+                    locateBtn.disabled = false;
+                    return;
+                }
+                
+                // Create LatLng object properly
+                const latlng = L.latLng(lat, lng);
+                
                 // Add marker at user's location
-                this.addMarker([lat, lng], accuracy);
+                this.addMarker(latlng, accuracy);
                 
                 // Update status
                 const accuracyMsg = accuracy ? ` (accuracy: ±${Math.round(accuracy)}m)` : '';
                 this.showLocationStatus(`Location acquired${accuracyMsg}`, 'success');
                 
                 // Update location text field
-                const latlng = [lat, lng];
-                const latFormatted = latlng[0].toFixed(6);
-                const lngFormatted = latlng[1].toFixed(6);
+                const latFormatted = lat.toFixed(6);
+                const lngFormatted = lng.toFixed(6);
                 document.getElementById('location').value = `Lat: ${latFormatted}, Lng: ${lngFormatted}`;
                 
-                // Center map on marker
-                this.map.setView(latlng, Math.max(this.map.getZoom(), 15));
+                // Center map on marker with animation
+                this.map.setView(latlng, 15, {
+                    animate: true,
+                    duration: 1
+                });
+                
+                this.isLocating = false;
+                locateBtn.innerHTML = originalHTML;
+                locateBtn.disabled = false;
             }, 100);
-            
-            this.isLocating = false;
-            locateBtn.innerHTML = originalHTML;
-            locateBtn.disabled = false;
         },
         (error) => {
+            clearTimeout(timeoutId);
             console.error('Geolocation error:', error);
             let message = 'Unable to get your location';
             
             switch(error.code) {
                 case error.PERMISSION_DENIED:
                     message = 'Location permission denied. Please enable location services for this site in your browser settings.';
+                    // Provide guidance on how to enable permissions
+                    if (window.confirm('Location permission denied. Would you like to see instructions on how to enable location permissions?')) {
+                        window.open('https://support.google.com/chrome/answer/142065?hl=en', '_blank');
+                    }
                     break;
                 case error.POSITION_UNAVAILABLE:
                     message = 'Location information unavailable. Please check your device location settings.';
@@ -85,8 +118,111 @@ getUserLocation() {
         },
         {
             enableHighAccuracy: true,
-            timeout: 15000,  // Increased to 15 seconds
+            timeout: 10000,  // 10 seconds timeout
             maximumAge: 0    // Don't use cached location
         }
     );
 },
+```
+
+Additionally, update the addMarker() function to ensure it handles the location properly:
+
+```javascript
+// Add marker to map
+addMarker(latlng, accuracy = null) {
+    // Convert to Leaflet LatLng if it's not already
+    if (!latlng.lat || !latlng.lng) {
+        if (Array.isArray(latlng)) {
+            latlng = L.latLng(latlng[0], latlng[1]);
+        } else {
+            console.error('Invalid latlng format:', latlng);
+            return;
+        }
+    }
+    
+    if (this.mapMarker) {
+        this.map.removeLayer(this.mapMarker);
+        // Also remove any existing accuracy circle
+        if (this.accuracyCircle) {
+            this.map.removeLayer(this.accuracyCircle);
+        }
+    }
+    
+    // Create marker
+    this.mapMarker = L.marker(latlng, {
+        draggable: true,
+        title: 'Observation Location'
+    }).addTo(this.map);
+    
+    // Add drag event
+    this.mapMarker.on('dragend', (e) => {
+        const marker = e.target;
+        const position = marker.getLatLng();
+        const lat = position.lat.toFixed(6);
+        const lng = position.lng.toFixed(6);
+        document.getElementById('location').value = `Lat: ${lat}, Lng: ${lng}`;
+    });
+    
+    this.mapMarker.options.accuracy = accuracy;
+    
+    // Add accuracy circle if accuracy is provided
+    if (accuracy) {
+        this.accuracyCircle = L.circle(latlng, {
+            radius: accuracy,
+            color: '#3498db',
+            fillColor: '#3498db',
+            fillOpacity: 0.1,
+            weight: 1
+        }).addTo(this.map);
+    }
+    
+    // Update location field
+    const lat = latlng.lat.toFixed(6);
+    const lng = latlng.lng.toFixed(6);
+    document.getElementById('location').value = `Lat: ${lat}, Lng: ${lng}`;
+    
+    // Center map on marker with padding
+    this.map.setView(latlng, Math.max(this.map.getZoom(), 15));
+},
+```
+
+Also, add this CSS for better loading indicator visibility:
+
+```css
+/* Add to your CSS */
+#use-my-location .loading {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    vertical-align: middle;
+    margin-right: 5px;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+```
+
+Key fixes made:
+
+1. Proper LatLng object creation: Using L.latLng(lat, lng) instead of just [lat, lng]
+2. Added timeout handling: Clears the "Locating..." state if it takes too long
+3. Better error handling: Provides guidance for permission issues
+4. Map initialization check: Ensures map is properly initialized before adding marker
+5. Button state reset: Ensures button is re-enabled even on errors
+6. Added timeout for geolocation: 10 seconds instead of 15 (more reasonable)
+7. Improved user feedback: Clear messages about what's happening
+
+Additional improvements you could make:
+
+1. Add a cancel button to stop the location request
+2. Implement watchPosition for continuous tracking (if needed)
+3. Add a fallback to IP-based location if geolocation fails
+4. Cache the last known location to speed up subsequent requests
+
+Try these fixes and the "Use My Location" function should work properly now!
