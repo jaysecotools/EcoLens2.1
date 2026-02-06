@@ -86,7 +86,7 @@
         csvPreviewData: null,
         selectedObservations: new Set(), // For batch export
         miniMap: null, // For coordinate preview
-accuracyCircle: null,
+        accuracyCircle: null,
 
         // Initialize the application
         init() {
@@ -641,8 +641,8 @@ accuracyCircle: null,
                                 location: {
                                     text: row.data['Location'] || '',
                                     coordinates: (row.data['Latitude'] && row.data['Longitude']) ? {
-                                        lat: parseFloat(row.data['Latitude']),
-                                        lng: parseFloat(row.data['Longitude'])
+                                        lat: parseFloat(rowData['Latitude']),
+                                        lng: parseFloat(rowData['Longitude'])
                                     } : null
                                 },
                                 habitat: row.data['Habitat'],
@@ -1122,23 +1122,23 @@ accuracyCircle: null,
         // Download CSV template
         downloadCSVTemplate() {
             const headers = EXPECTED_CSV_HEADERS;
-const exampleRow = [
-    'ECO-20231225-ABC12',
-    '2023-12-25T14:30:00', // ISO format - IMPORTANT for import compatibility
-    'Jane Doe',
-    'Canis lupus',
-    'Gray Wolf',
-    'Yellowstone National Park, Wyoming',
-    '44.4280',
-    '-110.5885',
-    'forest',
-    'direct',
-    'Large adult, gray coat, observed hunting',
-    'binoculars; camera',
-    'Field Guide to North American Mammals',
-    'Observed from 100m distance',
-    'No'
-];
+            const exampleRow = [
+                'ECO-20231225-ABC12',
+                '2023-12-25T14:30:00', // ISO format - IMPORTANT for import compatibility
+                'Jane Doe',
+                'Canis lupus',
+                'Gray Wolf',
+                'Yellowstone National Park, Wyoming',
+                '44.4280',
+                '-110.5885',
+                'forest',
+                'direct',
+                'Large adult, gray coat, observed hunting',
+                'binoculars; camera',
+                'Field Guide to North American Mammals',
+                'Observed from 100m distance',
+                'No'
+            ];
             
             const csvContent = [
                 headers.join(','),
@@ -1468,183 +1468,184 @@ const exampleRow = [
             });
         },
 
-// Add marker to map
-addMarker(latlng, accuracy = null) {
-    // Convert to Leaflet LatLng if it's not already
-    if (!latlng.lat || !latlng.lng) {
-        if (Array.isArray(latlng)) {
-            latlng = L.latLng(latlng[0], latlng[1]);
-        } else {
-            console.error('Invalid latlng format:', latlng);
-            return;
-        }
-    }
-    
-    if (this.mapMarker) {
-        this.map.removeLayer(this.mapMarker);
-        // Also remove any existing accuracy circle
-        if (this.accuracyCircle) {
-            this.map.removeLayer(this.accuracyCircle);
-        }
-    }
-    
-    // Create marker
-    this.mapMarker = L.marker(latlng, {
-        draggable: true,
-        title: 'Observation Location'
-    }).addTo(this.map);
-    
-    // Add drag event
-    this.mapMarker.on('dragend', (e) => {
-        const marker = e.target;
-        const position = marker.getLatLng();
-        const lat = position.lat.toFixed(6);
-        const lng = position.lng.toFixed(6);
-        document.getElementById('location').value = `Lat: ${lat}, Lng: ${lng}`;
-    });
-    
-    this.mapMarker.options.accuracy = accuracy;
-    
-    // Add accuracy circle if accuracy is provided
-    if (accuracy) {
-        this.accuracyCircle = L.circle(latlng, {
-            radius: accuracy,
-            color: '#3498db',
-            fillColor: '#3498db',
-            fillOpacity: 0.1,
-            weight: 1
-        }).addTo(this.map);
-    }
-    
-    // Update location field
-    const lat = latlng.lat.toFixed(6);
-    const lng = latlng.lng.toFixed(6);
-    document.getElementById('location').value = `Lat: ${lat}, Lng: ${lng}`;
-    
-    // Center map on marker with padding
-    this.map.setView(latlng, Math.max(this.map.getZoom(), 15));
-},
-
-// Get user's current location - FIXED VERSION
-getUserLocation() {
-    if (!navigator.geolocation) {
-        this.showLocationStatus('Geolocation is not supported by your browser', 'error');
-        return;
-    }
-
-    // Prevent multiple location requests
-    if (this.isLocating) {
-        this.showLocationStatus('Already getting location...', 'info');
-        return;
-    }
-
-    this.isLocating = true;
-    const locateBtn = document.getElementById('use-my-location');
-    const originalHTML = locateBtn.innerHTML;
-    locateBtn.innerHTML = '<span class="loading"></span> Locating...';
-    locateBtn.disabled = true;
-
-    this.showLocationStatus('Getting your location...', 'info');
-
-    // Clear any existing location status after 30 seconds timeout
-    const timeoutId = setTimeout(() => {
-        if (this.isLocating) {
-            this.showLocationStatus('Location request is taking longer than expected. Please ensure location services are enabled.', 'warning');
-        }
-    }, 30000);
-
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            clearTimeout(timeoutId);
-            
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            const accuracy = position.coords.accuracy;
-            
-            console.log('Location acquired:', { lat, lng, accuracy });
-            
-            // Make sure map is initialized
-            if (!this.map) {
-                this.initMap();
+        // Add marker to map
+        addMarker(latlng, accuracy = null) {
+            // Convert to Leaflet LatLng if it's not already
+            if (!latlng.lat || !latlng.lng) {
+                if (Array.isArray(latlng)) {
+                    latlng = L.latLng(latlng[0], latlng[1]);
+                } else {
+                    console.error('Invalid latlng format:', latlng);
+                    return;
+                }
             }
             
-            // Show map if not already shown
-            if (!this.mapEnabled) {
-                this.toggleMap(true);
+            if (this.mapMarker) {
+                this.map.removeLayer(this.mapMarker);
+                // Also remove any existing accuracy circle
+                if (this.accuracyCircle) {
+                    this.map.removeLayer(this.accuracyCircle);
+                }
             }
             
-            // Ensure map is properly initialized before adding marker
-            setTimeout(() => {
-                if (!this.map) {
-                    console.error('Map not initialized');
-                    this.showLocationStatus('Map initialization failed', 'error');
+            // Create marker
+            this.mapMarker = L.marker(latlng, {
+                draggable: true,
+                title: 'Observation Location'
+            }).addTo(this.map);
+            
+            // Add drag event
+            this.mapMarker.on('dragend', (e) => {
+                const marker = e.target;
+                const position = marker.getLatLng();
+                const lat = position.lat.toFixed(6);
+                const lng = position.lng.toFixed(6);
+                document.getElementById('location').value = `Lat: ${lat}, Lng: ${lng}`;
+            });
+            
+            this.mapMarker.options.accuracy = accuracy;
+            
+            // Add accuracy circle if accuracy is provided
+            if (accuracy) {
+                this.accuracyCircle = L.circle(latlng, {
+                    radius: accuracy,
+                    color: '#3498db',
+                    fillColor: '#3498db',
+                    fillOpacity: 0.1,
+                    weight: 1
+                }).addTo(this.map);
+            }
+            
+            // Update location field
+            const lat = latlng.lat.toFixed(6);
+            const lng = latlng.lng.toFixed(6);
+            document.getElementById('location').value = `Lat: ${lat}, Lng: ${lng}`;
+            
+            // Center map on marker with padding
+            this.map.setView(latlng, Math.max(this.map.getZoom(), 15));
+        },
+
+        // Get user's current location - FIXED VERSION
+        getUserLocation() {
+            if (!navigator.geolocation) {
+                this.showLocationStatus('Geolocation is not supported by your browser', 'error');
+                return;
+            }
+
+            // Prevent multiple location requests
+            if (this.isLocating) {
+                this.showLocationStatus('Already getting location...', 'info');
+                return;
+            }
+
+            this.isLocating = true;
+            const locateBtn = document.getElementById('use-my-location');
+            const originalHTML = locateBtn.innerHTML;
+            locateBtn.innerHTML = '<span class="loading"></span> Locating...';
+            locateBtn.disabled = true;
+
+            this.showLocationStatus('Getting your location...', 'info');
+
+            // Clear any existing location status after 30 seconds timeout
+            const timeoutId = setTimeout(() => {
+                if (this.isLocating) {
+                    this.showLocationStatus('Location request is taking longer than expected. Please ensure location services are enabled.', 'warning');
+                }
+            }, 30000);
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    clearTimeout(timeoutId);
+                    
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+                    
+                    console.log('Location acquired:', { lat, lng, accuracy });
+                    
+                    // Make sure map is initialized
+                    if (!this.map) {
+                        this.initMap();
+                    }
+                    
+                    // Show map if not already shown
+                    if (!this.mapEnabled) {
+                        this.toggleMap(true);
+                    }
+                    
+                    // Ensure map is properly initialized before adding marker
+                    setTimeout(() => {
+                        if (!this.map) {
+                            console.error('Map not initialized');
+                            this.showLocationStatus('Map initialization failed', 'error');
+                            this.isLocating = false;
+                            locateBtn.innerHTML = originalHTML;
+                            locateBtn.disabled = false;
+                            return;
+                        }
+                        
+                        // Create LatLng object properly
+                        const latlng = L.latLng(lat, lng);
+                        
+                        // Add marker at user's location
+                        this.addMarker(latlng, accuracy);
+                        
+                        // Update status
+                        const accuracyMsg = accuracy ? ` (accuracy: ±${Math.round(accuracy)}m)` : '';
+                        this.showLocationStatus(`Location acquired${accuracyMsg}`, 'success');
+                        
+                        // Update location text field
+                        const latFormatted = lat.toFixed(6);
+                        const lngFormatted = lng.toFixed(6);
+                        document.getElementById('location').value = `Lat: ${latFormatted}, Lng: ${lngFormatted}`;
+                        
+                        // Center map on marker with animation
+                        this.map.setView(latlng, 15, {
+                            animate: true,
+                            duration: 1
+                        });
+                        
+                        this.isLocating = false;
+                        locateBtn.innerHTML = originalHTML;
+                        locateBtn.disabled = false;
+                    }, 100);
+                },
+                (error) => {
+                    clearTimeout(timeoutId);
+                    console.error('Geolocation error:', error);
+                    let message = 'Unable to get your location';
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            message = 'Location permission denied. Please enable location services for this site in your browser settings.';
+                            // Provide guidance on how to enable permissions
+                            if (window.confirm('Location permission denied. Would you like to see instructions on how to enable location permissions?')) {
+                                window.open('https://support.google.com/chrome/answer/142065?hl=en', '_blank');
+                            }
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            message = 'Location information unavailable. Please check your device location settings.';
+                            break;
+                        case error.TIMEOUT:
+                            message = 'Location request timed out. Please try again.';
+                            break;
+                        default:
+                            message = 'An unknown error occurred while getting location.';
+                    }
+                    
+                    this.showLocationStatus(message, 'error');
                     this.isLocating = false;
                     locateBtn.innerHTML = originalHTML;
                     locateBtn.disabled = false;
-                    return;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,  // 10 seconds timeout
+                    maximumAge: 0    // Don't use cached location
                 }
-                
-                // Create LatLng object properly
-                const latlng = L.latLng(lat, lng);
-                
-                // Add marker at user's location
-                this.addMarker(latlng, accuracy);
-                
-                // Update status
-                const accuracyMsg = accuracy ? ` (accuracy: ±${Math.round(accuracy)}m)` : '';
-                this.showLocationStatus(`Location acquired${accuracyMsg}`, 'success');
-                
-                // Update location text field
-                const latFormatted = lat.toFixed(6);
-                const lngFormatted = lng.toFixed(6);
-                document.getElementById('location').value = `Lat: ${latFormatted}, Lng: ${lngFormatted}`;
-                
-                // Center map on marker with animation
-                this.map.setView(latlng, 15, {
-                    animate: true,
-                    duration: 1
-                });
-                
-                this.isLocating = false;
-                locateBtn.innerHTML = originalHTML;
-                locateBtn.disabled = false;
-            }, 100);
+            );
         },
-        (error) => {
-            clearTimeout(timeoutId);
-            console.error('Geolocation error:', error);
-            let message = 'Unable to get your location';
-            
-            switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    message = 'Location permission denied. Please enable location services for this site in your browser settings.';
-                    // Provide guidance on how to enable permissions
-                    if (window.confirm('Location permission denied. Would you like to see instructions on how to enable location permissions?')) {
-                        window.open('https://support.google.com/chrome/answer/142065?hl=en', '_blank');
-                    }
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    message = 'Location information unavailable. Please check your device location settings.';
-                    break;
-                case error.TIMEOUT:
-                    message = 'Location request timed out. Please try again.';
-                    break;
-                default:
-                    message = 'An unknown error occurred while getting location.';
-            }
-            
-            this.showLocationStatus(message, 'error');
-            this.isLocating = false;
-            locateBtn.innerHTML = originalHTML;
-            locateBtn.disabled = false;
-        },
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,  // 10 seconds timeout
-            maximumAge: 0    // Don't use cached location
-        }
-    );
-},
+
         // Handle photo upload with compression
         handlePhotoUpload(event) {
             const file = event.target.files[0];
@@ -1981,173 +1982,156 @@ getUserLocation() {
             }
         },
 
-// Handle export generation
-handleExport() {
-    const format = document.querySelector('input[name="export-format"]:checked').value;
-    const dateFrom = document.getElementById('date-from').value;
-    const dateTo = document.getElementById('date-to').value;
-    const enableBatch = document.getElementById('enable-batch-selection').checked;
-    
-    // Get selected observation IDs if batch selection is enabled
-    const selectedIds = enableBatch && this.selectedObservations.size > 0 ? this.selectedObservations : null;
-    
-    const filteredObservations = this.getFilteredObservations(dateFrom, dateTo, selectedIds);
-    
-    if (filteredObservations.length === 0) {
-        this.showStatus('No observations found for the selected criteria', 'error', 'export');
-        return;
-    }
-    
-    if (format === 'csv') {
-        // Ask user what type of CSV they want
-        if (confirm('Do you want to export a CSV that can be re-imported later?\n\nClick "OK" for import-friendly CSV (no metadata, ISO dates).\nClick "Cancel" for human-readable CSV (with metadata).')) {
-            this.exportToCSV(filteredObservations, dateFrom, dateTo, selectedIds);
-        } else {
-            const csvContent = this.exportToCSVWithMetadata(filteredObservations, dateFrom, dateTo, selectedIds);
+        // Handle export generation
+        handleExport() {
+            const format = document.querySelector('input[name="export-format"]:checked').value;
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+            const enableBatch = document.getElementById('enable-batch-selection').checked;
+            
+            // Get selected observation IDs if batch selection is enabled
+            const selectedIds = enableBatch && this.selectedObservations.size > 0 ? this.selectedObservations : null;
+            
+            const filteredObservations = this.getFilteredObservations(dateFrom, dateTo, selectedIds);
+            
+            if (filteredObservations.length === 0) {
+                this.showStatus('No observations found for the selected criteria', 'error', 'export');
+                return;
+            }
+            
+            if (format === 'csv') {
+                // Ask user what type of CSV they want
+                if (confirm('Do you want to export a CSV that can be re-imported later?\n\nClick "OK" for import-friendly CSV (no metadata, ISO dates).\nClick "Cancel" for human-readable CSV (with metadata).')) {
+                    this.exportToCSV(filteredObservations, dateFrom, dateTo, selectedIds);
+                } else {
+                    const csvContent = this.exportToCSVWithMetadata(filteredObservations, dateFrom, dateTo, selectedIds);
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const filename = selectedIds ? 
+                        `EcoLens_Selected_Export_With_Metadata_${new Date().toISOString().slice(0,10)}.csv` :
+                        `EcoLens_Export_With_Metadata_${new Date().toISOString().slice(0,10)}.csv`;
+                    
+                    this.showExportDownload(url, filename);
+                    this.showStatus(`Exported ${filteredObservations.length} observations to CSV (with metadata)`, 'success', 'export');
+                }
+            } else {
+                this.exportToPDF(filteredObservations, dateFrom, dateTo, selectedIds);
+            }
+        },
+
+        // Export to CSV with all fields and metadata
+        exportToCSV(observations, dateFrom, dateTo, selectedIds) {
+            const headers = [
+                'ID', 'Timestamp', 'Observer Name', 'Scientific Name', 'Common Name', 'Location',
+                'Latitude', 'Longitude', 'Habitat', 'Observation Type',
+                'Characteristics', 'Equipment', 'References', 'Notes', 'Has Photo'
+            ];
+            
+            // Create clean data rows without metadata for import compatibility
+            const rows = observations.map(obs => {
+                // Format timestamp for CSV import compatibility
+                const timestamp = new Date(obs.timestamp);
+                const formattedTimestamp = timestamp.toISOString(); // Use ISO format for import compatibility
+                
+                // Extract coordinates if available
+                const lat = obs.location.coordinates?.lat || '';
+                const lng = obs.location.coordinates?.lng || '';
+                
+                // Format location text - clean up the "Lat: X, Lng: Y" format if it's a coordinate string
+                let locationText = obs.location.text;
+                if (locationText.startsWith('Lat:') && locationText.includes('Lng:')) {
+                    // Keep the coordinate string as is for location field
+                }
+                
+                return [
+                    `"${this.sanitizeCSVValue(obs.id)}"`,
+                    `"${formattedTimestamp}"`, // Use ISO format for consistent import
+                    `"${this.sanitizeCSVValue(obs.observerName)}"`,
+                    `"${this.sanitizeCSVValue(obs.scientificName)}"`,
+                    `"${this.sanitizeCSVValue(obs.commonName)}"`,
+                    `"${this.sanitizeCSVValue(locationText)}"`,
+                    lat ? `"${lat}"` : '',
+                    lng ? `"${lng}"` : '',
+                    `"${this.sanitizeCSVValue(obs.habitat)}"`,
+                    `"${this.sanitizeCSVValue(obs.observationType)}"`,
+                    `"${this.sanitizeCSVValue(obs.characteristics || '')}"`,
+                    `"${this.sanitizeCSVValue((obs.equipment || []).join('; '))}"`,
+                    `"${this.sanitizeCSVValue(obs.references || '')}"`,
+                    `"${this.sanitizeCSVValue(obs.notes || '')}"`,
+                    obs.photo ? 'Yes' : 'No'
+                ];
+            });
+            
+            // Create CSV content - start with headers only for import compatibility
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row => row.join(','))
+            ].join('\n');
+            
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             
             const filename = selectedIds ? 
-                `EcoLens_Selected_Export_With_Metadata_${new Date().toISOString().slice(0,10)}.csv` :
-                `EcoLens_Export_With_Metadata_${new Date().toISOString().slice(0,10)}.csv`;
+                `EcoLens_Selected_Export_${new Date().toISOString().slice(0,10)}.csv` :
+                `EcoLens_Export_${new Date().toISOString().slice(0,10)}.csv`;
             
             this.showExportDownload(url, filename);
-            this.showStatus(`Exported ${filteredObservations.length} observations to CSV (with metadata)`, 'success', 'export');
-        }
-    } else {
-        this.exportToPDF(filteredObservations, dateFrom, dateTo, selectedIds);
-    }
-},
+            this.showStatus(`Exported ${observations.length} observations to CSV`, 'success', 'export');
+        },
 
-// Export to CSV with all fields and metadata
-exportToCSV(observations, dateFrom, dateTo, selectedIds) {
-    const headers = [
-        'ID', 'Timestamp', 'Observer Name', 'Scientific Name', 'Common Name', 'Location',
-        'Latitude', 'Longitude', 'Habitat', 'Observation Type',
-        'Characteristics', 'Equipment', 'References', 'Notes', 'Has Photo'
-    ];
-    
-    // Create clean data rows without metadata for import compatibility
-    const rows = observations.map(obs => {
-        // Format timestamp for CSV import compatibility
-        const timestamp = new Date(obs.timestamp);
-        const formattedTimestamp = timestamp.toISOString(); // Use ISO format for import compatibility
-        
-        // Extract coordinates if available
-        const lat = obs.location.coordinates?.lat || '';
-        const lng = obs.location.coordinates?.lng || '';
-        
-        // Format location text - clean up the "Lat: X, Lng: Y" format if it's a coordinate string
-        let locationText = obs.location.text;
-        if (locationText.startsWith('Lat:') && locationText.includes('Lng:')) {
-            // Keep the coordinate string as is for location field
-        }
-        
-        return [
-            `"${this.sanitizeCSVValue(obs.id)}"`,
-            `"${formattedTimestamp}"`, // Use ISO format for consistent import
-            `"${this.sanitizeCSVValue(obs.observerName)}"`,
-            `"${this.sanitizeCSVValue(obs.scientificName)}"`,
-            `"${this.sanitizeCSVValue(obs.commonName)}"`,
-            `"${this.sanitizeCSVValue(locationText)}"`,
-            lat ? `"${lat}"` : '',
-            lng ? `"${lng}"` : '',
-            `"${this.sanitizeCSVValue(obs.habitat)}"`,
-            `"${this.sanitizeCSVValue(obs.observationType)}"`,
-            `"${this.sanitizeCSVValue(obs.characteristics || '')}"`,
-            `"${this.sanitizeCSVValue((obs.equipment || []).join('; '))}"`,
-            `"${this.sanitizeCSVValue(obs.references || '')}"`,
-            `"${this.sanitizeCSVValue(obs.notes || '')}"`,
-            obs.photo ? 'Yes' : 'No'
-        ];
-    });
-    
-    // Create CSV content - start with headers only for import compatibility
-    const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    
-    const filename = selectedIds ? 
-        `EcoLens_Selected_Export_${new Date().toISOString().slice(0,10)}.csv` :
-        `EcoLens_Export_${new Date().toISOString().slice(0,10)}.csv`;
-    
-    this.showExportDownload(url, filename);
-    this.showStatus(`Exported ${observations.length} observations to CSV`, 'success', 'export');
-}, // <-- This closes the exportToCSV function
-
-// Export to CSV with metadata (for human-readable exports) - MOVED OUTSIDE
-exportToCSVWithMetadata(observations, dateFrom, dateTo, selectedIds) {
-    const headers = [
-        'ID', 'Timestamp', 'Observer Name', 'Scientific Name', 'Common Name', 'Location',
-        'Latitude', 'Longitude', 'Habitat', 'Observation Type',
-        'Characteristics', 'Equipment', 'References', 'Notes', 'Has Photo'
-    ];
-    
-    // Create metadata header
-    const metadata = [
-        `Export Metadata:`,
-        `Exported: ${new Date().toLocaleString()}`,
-        `Total Observations: ${observations.length}`,
-        `Date Range: ${dateFrom || 'Start'} to ${dateTo || 'End'}`,
-        `Selection: ${selectedIds ? 'Custom selection' : 'All observations'}`,
-        `Exported by: ${observations[0]?.observerName || 'EcoLens User'}`,
-        `App Version: 1.0`,
-        ``
-    ];
-    
-    const rows = observations.map(obs => {
-        const timestamp = new Date(obs.timestamp);
-        const lat = obs.location.coordinates?.lat || '';
-        const lng = obs.location.coordinates?.lng || '';
-        
-        return [
-            `"${this.sanitizeCSVValue(obs.id)}"`,
-            `"${timestamp.toLocaleString()}"`, // Human readable format
-            `"${this.sanitizeCSVValue(obs.observerName)}"`,
-            `"${this.sanitizeCSVValue(obs.scientificName)}"`,
-            `"${this.sanitizeCSVValue(obs.commonName)}"`,
-            `"${this.sanitizeCSVValue(obs.location.text)}"`,
-            lat,
-            lng,
-            `"${this.sanitizeCSVValue(obs.habitat)}"`,
-            `"${this.sanitizeCSVValue(obs.observationType)}"`,
-            `"${this.sanitizeCSVValue(obs.characteristics || '')}"`,
-            `"${this.sanitizeCSVValue((obs.equipment || []).join('; '))}"`,
-            `"${this.sanitizeCSVValue(obs.references || '')}"`,
-            `"${this.sanitizeCSVValue(obs.notes || '')}"`,
-            obs.photo ? 'Yes' : 'No'
-        ];
-    });
-    
-    const csvContent = [
-        ...metadata,
-        headers.join(','),
-        ...rows.map(row => row.join(','))
-    ].join('\n');
-    
-    return csvContent;
-},
-    
-    // Create CSV content
-    const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    
-    const filename = selectedIds ? 
-        `EcoLens_Selected_Export_${new Date().toISOString().slice(0,10)}.csv` :
-        `EcoLens_Export_${new Date().toISOString().slice(0,10)}.csv`;
-    
-    this.showExportDownload(url, filename);
-    this.showStatus(`Exported ${observations.length} observations to CSV`, 'success', 'export');
-},
+        // Export to CSV with metadata (for human-readable exports)
+        exportToCSVWithMetadata(observations, dateFrom, dateTo, selectedIds) {
+            const headers = [
+                'ID', 'Timestamp', 'Observer Name', 'Scientific Name', 'Common Name', 'Location',
+                'Latitude', 'Longitude', 'Habitat', 'Observation Type',
+                'Characteristics', 'Equipment', 'References', 'Notes', 'Has Photo'
+            ];
+            
+            // Create metadata header
+            const metadata = [
+                `Export Metadata:`,
+                `Exported: ${new Date().toLocaleString()}`,
+                `Total Observations: ${observations.length}`,
+                `Date Range: ${dateFrom || 'Start'} to ${dateTo || 'End'}`,
+                `Selection: ${selectedIds ? 'Custom selection' : 'All observations'}`,
+                `Exported by: ${observations[0]?.observerName || 'EcoLens User'}`,
+                `App Version: 1.0`,
+                ``
+            ];
+            
+            const rows = observations.map(obs => {
+                const timestamp = new Date(obs.timestamp);
+                const lat = obs.location.coordinates?.lat || '';
+                const lng = obs.location.coordinates?.lng || '';
+                
+                return [
+                    `"${this.sanitizeCSVValue(obs.id)}"`,
+                    `"${timestamp.toLocaleString()}"`, // Human readable format
+                    `"${this.sanitizeCSVValue(obs.observerName)}"`,
+                    `"${this.sanitizeCSVValue(obs.scientificName)}"`,
+                    `"${this.sanitizeCSVValue(obs.commonName)}"`,
+                    `"${this.sanitizeCSVValue(obs.location.text)}"`,
+                    lat,
+                    lng,
+                    `"${this.sanitizeCSVValue(obs.habitat)}"`,
+                    `"${this.sanitizeCSVValue(obs.observationType)}"`,
+                    `"${this.sanitizeCSVValue(obs.characteristics || '')}"`,
+                    `"${this.sanitizeCSVValue((obs.equipment || []).join('; '))}"`,
+                    `"${this.sanitizeCSVValue(obs.references || '')}"`,
+                    `"${this.sanitizeCSVValue(obs.notes || '')}"`,
+                    obs.photo ? 'Yes' : 'No'
+                ];
+            });
+            
+            const csvContent = [
+                ...metadata,
+                headers.join(','),
+                ...rows.map(row => row.join(','))
+            ].join('\n');
+            
+            return csvContent;
+        },
 
         // Export to PDF
         exportToPDF(observations, dateFrom, dateTo, selectedIds) {
