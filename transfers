@@ -1,8 +1,3 @@
-I can see the issue! You have a syntax error in your code. The exportToCSVWithMetadata function is defined inside the exportToCSV function, which causes a syntax error. The closing brace } is in the wrong place.
-
-Here's the corrected version. Look at the lines around 2421-2475 - you need to move the exportToCSVWithMetadata function outside of exportToCSV:
-
-```javascript
 // Export to CSV with all fields and metadata
 exportToCSV(observations, dateFrom, dateTo, selectedIds) {
     const headers = [
@@ -115,44 +110,20 @@ exportToCSVWithMetadata(observations, dateFrom, dateTo, selectedIds) {
     
     return csvContent;
 },
-```
-
-The problem was that you had:
-
-```javascript
-exportToCSV() {
-    // ... code ...
     
-    exportToCSVWithMetadata() {  // <-- This was INSIDE exportToCSV
-        // ... code ...
-    }
-    // ... more code ...
-}
-```
-
-When it should be:
-
-```javascript
-exportToCSV() {
-    // ... code ...
-},  // <-- Close exportToCSV here
-
-exportToCSVWithMetadata() {  // <-- Separate function outside
-    // ... code ...
+    // Create CSV content
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const filename = selectedIds ? 
+        `EcoLens_Selected_Export_${new Date().toISOString().slice(0,10)}.csv` :
+        `EcoLens_Export_${new Date().toISOString().slice(0,10)}.csv`;
+    
+    this.showExportDownload(url, filename);
+    this.showStatus(`Exported ${observations.length} observations to CSV`, 'success', 'export');
 },
-```
-
-Also, make sure you remove the extra closing brace and the comment line // Create CSV content - start with headers only for import compatibility that appears twice.
-
-Key fix:
-
-1. Move the exportToCSVWithMetadata function outside of the exportToCSV function
-2. Make sure both functions are at the same level in the EcoLens object
-3. Remove the duplicate comment line
-
-This should fix the syntax error and allow your CSV export/import to work properly. The exported CSV will now be importable because:
-
-1. It uses ISO date format (YYYY-MM-DDTHH:mm:ss)
-2. It doesn't include metadata lines at the beginning
-3. It properly quotes all fields
-4. You can choose between import-friendly and human-readable CSV
