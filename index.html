@@ -202,6 +202,24 @@
         to { opacity: 1; transform: translateX(0); }
     }
 
+/* Use My Location Styles */
+#use-my-location .loading {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    vertical-align: middle;
+    margin-right: 5px;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
     /* Form Styles */
     .form-section {
         background: var(--bg-secondary);
@@ -3283,6 +3301,16 @@ accuracyCircle: null,
 
 // Add marker to map
 addMarker(latlng, accuracy = null) {
+    // Convert to Leaflet LatLng if it's not already
+    if (!latlng.lat || !latlng.lng) {
+        if (Array.isArray(latlng)) {
+            latlng = L.latLng(latlng[0], latlng[1]);
+        } else {
+            console.error('Invalid latlng format:', latlng);
+            return;
+        }
+    }
+    
     if (this.mapMarker) {
         this.map.removeLayer(this.mapMarker);
         // Also remove any existing accuracy circle
@@ -3292,7 +3320,20 @@ addMarker(latlng, accuracy = null) {
     }
     
     // Create marker
-    this.mapMarker = L.marker(latlng).addTo(this.map);
+    this.mapMarker = L.marker(latlng, {
+        draggable: true,
+        title: 'Observation Location'
+    }).addTo(this.map);
+    
+    // Add drag event
+    this.mapMarker.on('dragend', (e) => {
+        const marker = e.target;
+        const position = marker.getLatLng();
+        const lat = position.lat.toFixed(6);
+        const lng = position.lng.toFixed(6);
+        document.getElementById('location').value = `Lat: ${lat}, Lng: ${lng}`;
+    });
+    
     this.mapMarker.options.accuracy = accuracy;
     
     // Add accuracy circle if accuracy is provided
@@ -3311,7 +3352,7 @@ addMarker(latlng, accuracy = null) {
     const lng = latlng.lng.toFixed(6);
     document.getElementById('location').value = `Lat: ${lat}, Lng: ${lng}`;
     
-    // Center map on marker
+    // Center map on marker with padding
     this.map.setView(latlng, Math.max(this.map.getZoom(), 15));
 },
 
@@ -3336,15 +3377,24 @@ getUserLocation() {
 
     this.showLocationStatus('Getting your location...', 'info');
 
+    // Clear any existing location status after 30 seconds timeout
+    const timeoutId = setTimeout(() => {
+        if (this.isLocating) {
+            this.showLocationStatus('Location request is taking longer than expected. Please ensure location services are enabled.', 'warning');
+        }
+    }, 30000);
+
     navigator.geolocation.getCurrentPosition(
         (position) => {
+            clearTimeout(timeoutId);
+            
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             const accuracy = position.coords.accuracy;
             
             console.log('Location acquired:', { lat, lng, accuracy });
             
-            // Make sure map is initialized and visible
+            // Make sure map is initialized
             if (!this.map) {
                 this.initMap();
             }
@@ -3354,36 +3404,55 @@ getUserLocation() {
                 this.toggleMap(true);
             }
             
-            // Small delay to ensure map is fully loaded
+            // Ensure map is properly initialized before adding marker
             setTimeout(() => {
+                if (!this.map) {
+                    console.error('Map not initialized');
+                    this.showLocationStatus('Map initialization failed', 'error');
+                    this.isLocating = false;
+                    locateBtn.innerHTML = originalHTML;
+                    locateBtn.disabled = false;
+                    return;
+                }
+                
+                // Create LatLng object properly
+                const latlng = L.latLng(lat, lng);
+                
                 // Add marker at user's location
-                this.addMarker([lat, lng], accuracy);
+                this.addMarker(latlng, accuracy);
                 
                 // Update status
                 const accuracyMsg = accuracy ? ` (accuracy: ±${Math.round(accuracy)}m)` : '';
                 this.showLocationStatus(`Location acquired${accuracyMsg}`, 'success');
                 
                 // Update location text field
-                const latlng = [lat, lng];
-                const latFormatted = latlng[0].toFixed(6);
-                const lngFormatted = latlng[1].toFixed(6);
+                const latFormatted = lat.toFixed(6);
+                const lngFormatted = lng.toFixed(6);
                 document.getElementById('location').value = `Lat: ${latFormatted}, Lng: ${lngFormatted}`;
                 
-                // Center map on marker
-                this.map.setView(latlng, Math.max(this.map.getZoom(), 15));
+                // Center map on marker with animation
+                this.map.setView(latlng, 15, {
+                    animate: true,
+                    duration: 1
+                });
+                
+                this.isLocating = false;
+                locateBtn.innerHTML = originalHTML;
+                locateBtn.disabled = false;
             }, 100);
-            
-            this.isLocating = false;
-            locateBtn.innerHTML = originalHTML;
-            locateBtn.disabled = false;
         },
         (error) => {
+            clearTimeout(timeoutId);
             console.error('Geolocation error:', error);
             let message = 'Unable to get your location';
             
             switch(error.code) {
                 case error.PERMISSION_DENIED:
                     message = 'Location permission denied. Please enable location services for this site in your browser settings.';
+                    // Provide guidance on how to enable permissions
+                    if (window.confirm('Location permission denied. Would you like to see instructions on how to enable location permissions?')) {
+                        window.open('https://support.google.com/chrome/answer/142065?hl=en', '_blank');
+                    }
                     break;
                 case error.POSITION_UNAVAILABLE:
                     message = 'Location information unavailable. Please check your device location settings.';
@@ -3402,12 +3471,11 @@ getUserLocation() {
         },
         {
             enableHighAccuracy: true,
-            timeout: 15000,  // Increased to 15 seconds
+            timeout: 10000,  // 10 seconds timeout
             maximumAge: 0    // Don't use cached location
         }
     );
 },
-
         // Handle photo upload with compression
         handlePhotoUpload(event) {
             const file = event.target.files[0];
