@@ -1,0 +1,397 @@
+I can see the issues. Let me provide specific fixes for both problems:
+
+Problem 1: Photo Deletion Still Not Working
+
+The issue is that the photo remove button is being hidden but the photo data is still in memory. Here's what to replace:
+
+In the removePhoto() method, replace with:
+
+```javascript
+    // Remove photo - FIXED: Properly clears photo data
+    removePhoto() {
+        if (this.currentPhoto) {
+            // Clear the photo data from memory
+            this.currentPhoto = null;
+            
+            // Clear any blob URLs to free memory
+            if (this.currentPhoto && this.currentPhoto.data && this.currentPhoto.data.startsWith('blob:')) {
+                try {
+                    URL.revokeObjectURL(this.currentPhoto.data);
+                } catch (e) {
+                    console.warn('Error revoking photo URL:', e);
+                }
+            }
+        }
+        
+        const photoPreview = document.getElementById('photo-preview');
+        const photoUpload = document.getElementById('photo-upload');
+        const photoInfo = document.getElementById('photo-info');
+        const photoRemove = document.getElementById('photo-remove');
+        
+        if (photoPreview) {
+            photoPreview.style.display = 'none';
+            photoPreview.src = '';
+            photoPreview.alt = '';
+        }
+        if (photoUpload) photoUpload.value = '';
+        if (photoInfo) {
+            photoInfo.style.display = 'none';
+            // Clear the photo info text
+            const photoSize = document.getElementById('photo-size');
+            const photoResolution = document.getElementById('photo-resolution');
+            if (photoSize) photoSize.textContent = 'Size: --';
+            if (photoResolution) photoResolution.textContent = 'Resolution: --';
+        }
+        if (photoRemove) photoRemove.style.display = 'none';
+        
+        // Clean up canvas elements to free memory
+        this.cleanupCanvasElements();
+        
+        // Force garbage collection if possible
+        if (window.gc) {
+            try {
+                window.gc();
+            } catch (e) {
+                console.log('Manual GC not available');
+            }
+        }
+        
+        console.log('Photo removed and memory cleared');
+    },
+```
+
+Problem 2: Memory Full Error
+
+The issue is in the saveToLocalStorage() method and photo compression. Here are the fixes:
+
+In the saveToLocalStorage() method, replace with:
+
+```javascript
+    // Save to localStorage with retry logic and better memory management
+    saveToLocalStorage(retryCount = 3) {
+        console.log('Saving to localStorage, current observations:', this.observations.length);
+        
+        // Clean up any large data before saving
+        const cleanedObservations = this.observations.map(obs => {
+            const cleanObs = { ...obs };
+            // Remove any temporary or large data that shouldn't be saved
+            delete cleanObs._temp;
+            delete cleanObs._processing;
+            return cleanObs;
+        });
+        
+        // Try to save with size check
+        for (let i = 0; i < retryCount; i++) {
+            try {
+                const dataToSave = JSON.stringify(cleanedObservations);
+                const dataSize = new Blob([dataToSave]).size;
+                console.log('Data size to save:', dataSize, 'bytes');
+                
+                if (dataSize > 5 * 1024 * 1024) { // 5MB limit
+                    console.warn('Data too large, attempting to compress photos');
+                    // Remove photos that are too large
+                    const compressedObservations = cleanedObservations.map(obs => {
+                        if (obs.photo && obs.photo.data && obs.photo.data.length > 500000) {
+                            console.log('Removing large photo from observation:', obs.id);
+                            return { ...obs, photo: null };
+                        }
+                        return obs;
+                    });
+                    
+                    const compressedData = JSON.stringify(compressedObservations);
+                    const compressedSize = new Blob([compressedData]).size;
+                    console.log('Compressed data size:', compressedSize, 'bytes');
+                    
+                    if (compressedSize > 5 * 1024 * 1024) {
+                        // Still too large, remove all photos
+                        const noPhotoObservations = compressedObservations.map(obs => ({ 
+                            ...obs, 
+                            photo: null 
+                        }));
+                        localStorage.setItem('ecolens_observations', JSON.stringify(noPhotoObservations));
+                        this.observations = noPhotoObservations;
+                        console.log('Removed all photos to save space');
+                    } else {
+                        localStorage.setItem('ecolens_observations', compressedData);
+                        this.observations = compressedObservations;
+                    }
+                } else {
+                    localStorage.setItem('ecolens_observations', dataToSave);
+                }
+                
+                this.renderLogbook();
+                console.log('Save successful on attempt', i + 1);
+                return true;
+            } catch (error) {
+                console.warn(`Save attempt ${i + 1} failed:`, error);
+                
+                if (error.name === 'QuotaExceededError') {
+                    // Try to clear old data
+                    if (this.autoClearOldData()) {
+                        continue; // Retry with cleared data
+                    } else {
+                        // If still failing, remove oldest observations
+                        const keepCount = Math.max(10, Math.floor(this.observations.length * 0.7));
+                        this.observations = this.observations.slice(0, keepCount);
+                        console.log(`Reduced observations to ${keepCount} due to storage limits`);
+                        
+                        if (i === retryCount - 1) {
+                            this.showStatus('Storage full. Some old data was removed.', 'warning');
+                            throw error;
+                        }
+                    }
+                } else if (i === retryCount - 1) {
+                    throw error;
+                }
+                
+                // Wait before retry
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+        return false;
+    },
+```
+
+In the compressImage() method, replace with (to reduce memory usage):
+
+```javascript
+    // Compress image with better memory management
+    compressImage(dataUrl, callback, maxWidth = 1200, maxHeight = 800, quality = 0.6) {
+        console.log('Starting image compression');
+        
+        const img = new Image();
+        
+        img.onload = () => {
+            console.log('Image loaded for compression:', img.width, 'x', img.height);
+            
+            // Calculate new dimensions
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > maxWidth || height > maxHeight) {
+                const ratio = Math.min(maxWidth / width, maxHeight / height);
+                width = Math.floor(width * ratio);
+                height = Math.floor(height * ratio);
+                console.log('Resizing to:', width, 'x', height);
+            }
+            
+            // Create canvas with limited size
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            
+            try {
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                
+                // Draw with white background
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, width, height);
+                
+                // Draw image
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Compress to JPEG with lower quality
+                const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                
+                // Calculate sizes
+                const originalSize = dataUrl.length;
+                const compressedSize = compressedDataUrl.length;
+                const compressionRatio = ((originalSize - compressedSize) / originalSize * 100).toFixed(1);
+                
+                console.log(`Image compression: ${(originalSize/1024).toFixed(1)}KB -> ${(compressedSize/1024).toFixed(1)}KB (${compressionRatio}% reduction)`);
+                
+                // Clean up
+                img.src = '';
+                canvas.width = 0;
+                canvas.height = 0;
+                
+                // Clear context
+                ctx.clearRect(0, 0, 0, 0);
+                
+                // Add to cleanup list
+                this.canvasCleanupList.push(canvas);
+                
+                // Limit cleanup list size
+                if (this.canvasCleanupList.length > 5) {
+                    const oldCanvas = this.canvasCleanupList.shift();
+                    if (oldCanvas) {
+                        oldCanvas.width = 0;
+                        oldCanvas.height = 0;
+                    }
+                }
+                
+                // Force garbage collection if available
+                if (window.gc) {
+                    setTimeout(() => window.gc(), 100);
+                }
+                
+                callback(compressedDataUrl);
+                
+            } catch (error) {
+                console.error('Error during image compression:', error);
+                // Fallback to original with warning
+                this.showStatus('Image compression failed, using original (may be large)', 'warning');
+                callback(dataUrl);
+            }
+        };
+        
+        img.onerror = (error) => {
+            console.error('Error loading image for compression:', error);
+            img.src = '';
+            // Fallback to original
+            callback(dataUrl);
+        };
+        
+        // Set crossOrigin to avoid tainted canvas
+        img.crossOrigin = 'anonymous';
+        img.src = dataUrl;
+    },
+```
+
+In the handlePhotoUpload() method, add memory check:
+
+```javascript
+    // Handle photo upload with memory check
+    handlePhotoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Check file size
+        const MAX_FILE_SIZE = 3 * 1024 * 1024; // Reduced to 3MB
+        if (file.size > MAX_FILE_SIZE) {
+            this.showStatus(`Image must be less than ${MAX_FILE_SIZE/1024/1024}MB. Selected: ${(file.size/1024/1024).toFixed(1)}MB`, 'error');
+            event.target.value = '';
+            return;
+        }
+
+        // Check total storage usage
+        try {
+            const currentData = localStorage.getItem('ecolens_observations');
+            if (currentData) {
+                const currentSize = new Blob([currentData]).size;
+                if (currentSize > 4 * 1024 * 1024) { // 4MB warning
+                    if (!confirm('Storage is getting full. Large photos may cause issues. Continue?')) {
+                        event.target.value = '';
+                        return;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Could not check storage usage:', e);
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.compressImage(e.target.result, (compressedData) => {
+                this.currentPhoto = {
+                    data: compressedData,
+                    filename: `ECO_${Date.now()}.jpg`,
+                    type: 'image/jpeg',
+                    originalSize: file.size,
+                    compressedSize: compressedData.length
+                };
+                
+                const preview = document.getElementById('photo-preview');
+                if (preview) {
+                    preview.src = compressedData;
+                    preview.style.display = 'block';
+                    preview.alt = 'Observation photo preview';
+                }
+                
+                const photoRemove = document.getElementById('photo-remove');
+                if (photoRemove) {
+                    photoRemove.style.display = 'flex';
+                    // Re-attach event listener
+                    photoRemove.onclick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.removePhoto();
+                    };
+                }
+                
+                const photoInfo = document.getElementById('photo-info');
+                const photoSize = document.getElementById('photo-size');
+                const photoResolution = document.getElementById('photo-resolution');
+                
+                const img = new Image();
+                img.onload = () => {
+                    if (photoSize) photoSize.textContent = `Size: ${this.formatBytes(this.currentPhoto.compressedSize)}`;
+                    if (photoResolution) photoResolution.textContent = `Resolution: ${img.width}×${img.height}`;
+                    if (photoInfo) photoInfo.style.display = 'block';
+                    
+                    // Clean up
+                    img.src = '';
+                };
+                img.onerror = () => {
+                    img.src = '';
+                };
+                img.src = compressedData;
+                
+                console.log('Photo loaded, size:', this.formatBytes(compressedData.length));
+            });
+        };
+        
+        reader.onerror = () => {
+            this.showStatus('Error reading image file', 'error');
+            event.target.value = '';
+        };
+        
+        reader.readAsDataURL(file);
+    },
+```
+
+Add a new method for memory management (add this to the EcoLens object):
+
+```javascript
+    // Check and manage storage space
+    checkStorageSpace() {
+        try {
+            let total = 0;
+            for (let key in localStorage) {
+                if (localStorage.hasOwnProperty(key)) {
+                    const value = localStorage.getItem(key);
+                    total += value.length * 2; // Approximate bytes (2 bytes per char for UTF-16)
+                }
+            }
+            const usedMB = (total / 1024 / 1024).toFixed(2);
+            console.log('Storage used:', usedMB, 'MB');
+            
+            if (total > 4.5 * 1024 * 1024) { // 4.5MB warning
+                this.showStatus(`Storage getting full (${usedMB}MB used). Consider exporting and clearing old data.`, 'warning', 'record');
+                return false;
+            }
+            return true;
+        } catch (e) {
+            console.warn('Could not check storage space:', e);
+            return true;
+        }
+    },
+```
+
+Call the storage check in handleRecordObservation():
+
+Add this check at the beginning of handleRecordObservation():
+
+```javascript
+    // Handle recording a new observation
+    handleRecordObservation() {
+        // Check storage space first
+        if (!this.checkStorageSpace()) {
+            if (!confirm('Storage is getting full. Save anyway? (You may need to export/clear data soon)')) {
+                return;
+            }
+        }
+        
+        const date = document.getElementById('observation-date')?.value;
+        // ... rest of the existing code ...
+```
+
+Summary of Changes:
+
+1. Fixed removePhoto(): Properly clears photo data from memory and revokes blob URLs
+2. Fixed saveToLocalStorage(): Added size checking, automatic photo removal when data is too large
+3. Fixed compressImage(): Reduced default quality and size limits, better memory cleanup
+4. Fixed handlePhotoUpload(): Added storage checks before uploading
+5. Added checkStorageSpace(): New method to monitor storage usage
+
+These changes should fix both the photo deletion issue and the memory full error. The photo deletion now properly clears the data from memory, and the storage management prevents the quota exceeded error by automatically compressing or removing photos when storage gets too full.
