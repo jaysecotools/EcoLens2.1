@@ -1,4 +1,4 @@
-<!-- Everything seems to work. One snippet of HTML left to add -->
+<!-- Everything seems to work. HTML snippet added -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1672,30 +1672,39 @@
 
         <!-- Export Panel -->
         <div id="export-panel" class="tab-panel">
-            <!-- Import Section -->
-            <div class="form-section import-section">
-                <h2 class="form-title">
-                    <i class="fas fa-file-import"></i> Import Observations
-                </h2>
-                <div class="form-group">
-                    <label class="form-label" for="csv-import">
-                        <i class="fas fa-file-csv"></i> Import CSV File
-                    </label>
-                    <input type="file" id="csv-import" accept=".csv" class="form-input" aria-label="CSV file to import">
-                    
-                    <div class="import-mode">
-                        <div class="import-mode-option">
-                            <label class="form-label tooltip" for="import-mode">
-                                <i class="fas fa-cog"></i> Import Mode
-                                <span class="tooltip-text">Append: Add new rows only | Replace: Clear all and import | Merge: Update existing and add new</span>
-                            </label>
-                            <select id="import-mode" class="form-select" aria-label="Import mode">
-                                <option value="append">Append to existing data</option>
-                                <option value="replace">Replace existing data</option>
-                                <option value="merge">Merge and update existing</option>
-                            </select>
-                        </div>
-                    </div>
+
+<!-- Import Section -->
+<div class="form-section import-section">
+    <h2 class="form-title">
+        <i class="fas fa-file-import"></i> Import Observations
+    </h2>
+    <div class="form-group">
+        <label class="form-label" for="csv-import">
+            <i class="fas fa-file-csv"></i> Import CSV File
+        </label>
+        <input type="file" id="csv-import" accept=".csv" class="form-input" aria-label="CSV file to import">
+        
+        <!-- ADD THE JSON INPUT RIGHT AFTER THE CSV INPUT -->
+        <label class="form-label" for="json-import" style="margin-top: 1rem;">
+            <i class="fas fa-file-code"></i> Import JSON File
+        </label>
+        <input type="file" id="json-import" accept=".json" class="form-input" 
+               style="margin-top: 0.5rem;" aria-label="JSON file to import">
+        <!-- END OF ADDITION -->
+        
+        <div class="import-mode">
+            <div class="import-mode-option">
+                <label class="form-label tooltip" for="import-mode">
+                    <i class="fas fa-cog"></i> Import Mode
+                    <span class="tooltip-text">Append: Add new rows only | Replace: Clear all and import | Merge: Update existing and add new</span>
+                </label>
+                <select id="import-mode" class="form-select" aria-label="Import mode">
+                    <option value="append">Append to existing data</option>
+                    <option value="replace">Replace existing data</option>
+                    <option value="merge">Merge and update existing</option>
+                </select>
+            </div>
+        </div>
                     
                     <div class="import-note">
                         <strong><i class="fas fa-info-circle"></i> Required format:</strong> CSV with headers: ID, Timestamp, Observer Name, Scientific Name, Common Name, Location, Latitude, Longitude, Habitat, Observation Type, Characteristics, Equipment, References, Notes, Has Photo.<br>
