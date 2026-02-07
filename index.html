@@ -1,4 +1,4 @@
-<!-- Everything seems to work. HTML snippet added -->
+<!-- Critical issues fixed. Medium priority waiting -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1706,6 +1706,18 @@
             </div>
         </div>
                     
+<!-- Add this in the import-mode div -->
+<div class="import-mode-option">
+    <label class="form-label tooltip" for="json-import-mode">
+        <i class="fas fa-cog"></i> JSON Import Mode
+    </label>
+    <select id="json-import-mode" class="form-select" aria-label="JSON import mode">
+        <option value="append">Append to existing data</option>
+        <option value="replace">Replace existing data</option>
+        <option value="merge">Merge and update existing</option>
+    </select>
+</div>
+
                     <div class="import-note">
                         <strong><i class="fas fa-info-circle"></i> Required format:</strong> CSV with headers: ID, Timestamp, Observer Name, Scientific Name, Common Name, Location, Latitude, Longitude, Habitat, Observation Type, Characteristics, Equipment, References, Notes, Has Photo.<br>
                         <strong><i class="fas fa-calendar-alt"></i> Date format:</strong> Use ISO format (YYYY-MM-DDTHH:mm:ss) for best results.<br>
@@ -1716,6 +1728,13 @@
                 <!-- CSV Preview & Validation Section -->
                 <div id="csv-preview-section" class="csv-preview-section">
                     <h3><i class="fas fa-search"></i> CSV Preview & Validation</h3>
+
+<!-- Add this after the CSV preview section -->
+<div id="csv-import-progress" class="pdf-status" style="display: none;">
+    <div id="csv-import-status-text">Importing CSV...</div>
+    <progress id="csv-import-progress-bar" value="0" max="100"></progress>
+    <div id="csv-import-current-action"></div>
+</div>
                     
                     <!-- Validation Statistics -->
                     <div id="validation-stats" class="validation-stats" style="display: none;">
@@ -1753,6 +1772,36 @@
                 </button>
                 <div id="import-status" class="status-message" style="display: none; margin-top: 1.5rem;"></div>
             </div>
+
+<!-- Add this after the CSV preview section (around line 679-680) -->
+<div id="json-preview-section" class="csv-preview-section" style="display: none;">
+    <h3><i class="fas fa-file-code"></i> JSON Preview & Validation</h3>
+    
+    <div id="json-validation-stats" class="validation-stats" style="display: none;">
+        <div id="json-valid-count" class="stat-item stat-valid">
+            <i class="fas fa-check-circle"></i> <span id="json-valid-count-val">0</span> valid
+        </div>
+        <div id="json-invalid-count" class="stat-item stat-invalid">
+            <i class="fas fa-times-circle"></i> <span id="json-invalid-count-val">0</span> invalid
+        </div>
+        <div id="json-photo-count" class="stat-item stat-info">
+            <i class="fas fa-camera"></i> <span id="json-photo-count-val">0</span> with photos
+        </div>
+    </div>
+    
+    <div id="json-validation-summary" class="validation-summary"></div>
+    
+    <div id="json-preview-content" class="json-preview-content" style="max-height: 200px; overflow: auto; background: #f8f9fa; padding: 1rem; border-radius: var(--border-radius-sm); margin: 1rem 0;"></div>
+    
+    <div id="json-preview-actions" class="btn-group" style="margin-top: 1.5rem;">
+        <button id="confirm-json-import" class="btn btn-primary">
+            <i class="fas fa-check"></i> Confirm Import
+        </button>
+        <button id="cancel-json-import" class="btn btn-outline">
+            <i class="fas fa-times"></i> Cancel
+        </button>
+    </div>
+</div>
 
             <!-- Export Section -->
             <div class="form-section export-options">
@@ -3967,6 +4016,38 @@ const EcoLens = {
                 this.handlePhotoUpload(e);
             });
         }
+
+const photoRemoveBtn = document.getElementById('photo-remove');
+if (photoRemoveBtn) {
+    photoRemoveBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.removePhoto();
+    });
+}
+
+// In setupEventListeners() method, add:
+const previewJSONBtn = document.createElement('button');
+previewJSONBtn.id = 'preview-json-import';
+previewJSONBtn.className = 'btn btn-outline';
+previewJSONBtn.innerHTML = '<i class="fas fa-eye"></i> Preview JSON Import';
+previewJSONBtn.style.marginTop = '1rem';
+
+const importSection = document.querySelector('.import-section .form-group');
+if (importSection) {
+    importSection.appendChild(previewJSONBtn);
+    
+    previewJSONBtn.addEventListener('click', () => {
+        this.handlePreviewJSONImport();
+    });
+}
+
+// Also add the cancel button listener
+const cancelJSONBtn = document.getElementById('cancel-json-import');
+if (cancelJSONBtn) {
+    cancelJSONBtn.addEventListener('click', () => {
+        this.hideJSONPreview();
+    });
+}
 
         document.querySelectorAll('input[name="equipment"]').forEach(checkbox => {
             checkbox.addEventListener('change', (e) => {
