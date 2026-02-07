@@ -1,4 +1,4 @@
-<!-- Critical issues fixed. Medium priority waiting -->
+<!-- Critical Errors Fixed - Working Version -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1391,12 +1391,32 @@
     }
     
     /* Update map controls for dark mode */
+    .leaflet-container {
+        background: var(--bg-secondary) !important;
+    }
+    
     body.dark-mode .leaflet-tile {
-        filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+        filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
     }
     
     body.dark-mode .leaflet-control {
-        filter: invert(1) hue-rotate(180deg);
+        background-color: var(--bg-secondary) !important;
+        border-color: var(--border-color) !important;
+    }
+    
+    body.dark-mode .leaflet-control a {
+        background-color: var(--bg-secondary) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-color) !important;
+    }
+    
+    body.dark-mode .leaflet-popup-content-wrapper {
+        background-color: var(--bg-secondary) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    body.dark-mode .leaflet-popup-tip {
+        background-color: var(--bg-secondary) !important;
     }
 </style>
 </head>
@@ -1673,69 +1693,71 @@
         <!-- Export Panel -->
         <div id="export-panel" class="tab-panel">
 
-<!-- Import Section -->
-<div class="form-section import-section">
-    <h2 class="form-title">
-        <i class="fas fa-file-import"></i> Import Observations
-    </h2>
-    <div class="form-group">
-        <label class="form-label" for="csv-import">
-            <i class="fas fa-file-csv"></i> Import CSV File
-        </label>
-        <input type="file" id="csv-import" accept=".csv" class="form-input" aria-label="CSV file to import">
-        
-        <!-- ADD THE JSON INPUT RIGHT AFTER THE CSV INPUT -->
-        <label class="form-label" for="json-import" style="margin-top: 1rem;">
-            <i class="fas fa-file-code"></i> Import JSON File
-        </label>
-        <input type="file" id="json-import" accept=".json" class="form-input" 
-               style="margin-top: 0.5rem;" aria-label="JSON file to import">
-        <!-- END OF ADDITION -->
-        
-        <div class="import-mode">
-            <div class="import-mode-option">
-                <label class="form-label tooltip" for="import-mode">
-                    <i class="fas fa-cog"></i> Import Mode
-                    <span class="tooltip-text">Append: Add new rows only | Replace: Clear all and import | Merge: Update existing and add new</span>
-                </label>
-                <select id="import-mode" class="form-select" aria-label="Import mode">
-                    <option value="append">Append to existing data</option>
-                    <option value="replace">Replace existing data</option>
-                    <option value="merge">Merge and update existing</option>
-                </select>
-            </div>
-        </div>
+            <!-- Import Section -->
+            <div class="form-section import-section">
+                <h2 class="form-title">
+                    <i class="fas fa-file-import"></i> Import Observations
+                </h2>
+                <div class="form-group">
+                    <label class="form-label" for="csv-import">
+                        <i class="fas fa-file-csv"></i> Import CSV File
+                    </label>
+                    <input type="file" id="csv-import" accept=".csv" class="form-input" aria-label="CSV file to import">
                     
-<!-- Add this in the import-mode div -->
-<div class="import-mode-option">
-    <label class="form-label tooltip" for="json-import-mode">
-        <i class="fas fa-cog"></i> JSON Import Mode
-    </label>
-    <select id="json-import-mode" class="form-select" aria-label="JSON import mode">
-        <option value="append">Append to existing data</option>
-        <option value="replace">Replace existing data</option>
-        <option value="merge">Merge and update existing</option>
-    </select>
-</div>
-
+                    <label class="form-label" for="json-import" style="margin-top: 1rem;">
+                        <i class="fas fa-file-code"></i> Import JSON File
+                    </label>
+                    <input type="file" id="json-import" accept=".json" class="form-input" 
+                           style="margin-top: 0.5rem;" aria-label="JSON file to import">
+                    
+                    <div class="import-mode">
+                        <div class="import-mode-option">
+                            <label class="form-label tooltip" for="import-mode">
+                                <i class="fas fa-cog"></i> CSV Import Mode
+                            </label>
+                            <select id="import-mode" class="form-select" aria-label="Import mode">
+                                <option value="append">Append to existing data</option>
+                                <option value="replace">Replace existing data</option>
+                                <option value="merge">Merge and update existing</option>
+                            </select>
+                        </div>
+                        <div class="import-mode-option">
+                            <label class="form-label tooltip" for="json-import-mode">
+                                <i class="fas fa-cog"></i> JSON Import Mode
+                            </label>
+                            <select id="json-import-mode" class="form-select" aria-label="JSON import mode">
+                                <option value="append">Append to existing data</option>
+                                <option value="replace">Replace existing data</option>
+                                <option value="merge">Merge and update existing</option>
+                            </select>
+                        </div>
+                    </div>
+                                
                     <div class="import-note">
                         <strong><i class="fas fa-info-circle"></i> Required format:</strong> CSV with headers: ID, Timestamp, Observer Name, Scientific Name, Common Name, Location, Latitude, Longitude, Habitat, Observation Type, Characteristics, Equipment, References, Notes, Has Photo.<br>
+                        <strong>OR</strong> JSON array of observation objects with proper structure.<br>
                         <strong><i class="fas fa-calendar-alt"></i> Date format:</strong> Use ISO format (YYYY-MM-DDTHH:mm:ss) for best results.<br>
                         <strong><i class="fas fa-shield-alt"></i> Safety note:</strong> Text starting with =, +, -, @ will be prefixed with ' to prevent formula execution.
                     </div>
+                    
+                    <button id="preview-import" class="btn btn-primary btn-block">
+                        <i class="fas fa-eye"></i> Preview CSV Import
+                    </button>
+                    <button id="preview-json-import" class="btn btn-primary btn-block" style="margin-top: 1rem;">
+                        <i class="fas fa-eye"></i> Preview JSON Import
+                    </button>
                 </div>
                 
                 <!-- CSV Preview & Validation Section -->
                 <div id="csv-preview-section" class="csv-preview-section">
                     <h3><i class="fas fa-search"></i> CSV Preview & Validation</h3>
 
-<!-- Add this after the CSV preview section -->
-<div id="csv-import-progress" class="pdf-status" style="display: none;">
-    <div id="csv-import-status-text">Importing CSV...</div>
-    <progress id="csv-import-progress-bar" value="0" max="100"></progress>
-    <div id="csv-import-current-action"></div>
-</div>
-                    
+                    <div id="csv-import-progress" class="pdf-status" style="display: none;">
+                        <div id="csv-import-status-text">Importing CSV...</div>
+                        <progress id="csv-import-progress-bar" value="0" max="100"></progress>
+                        <div id="csv-import-current-action"></div>
+                    </div>
+                                        
                     <!-- Validation Statistics -->
                     <div id="validation-stats" class="validation-stats" style="display: none;">
                         <div id="stat-valid-rows" class="stat-item stat-valid">
@@ -1767,41 +1789,38 @@
                     </div>
                 </div>
                 
-                <button id="preview-import" class="btn btn-primary btn-block">
-                    <i class="fas fa-eye"></i> Preview Import
-                </button>
+                <!-- JSON Preview Section -->
+                <div id="json-preview-section" class="csv-preview-section" style="display: none;">
+                    <h3><i class="fas fa-file-code"></i> JSON Preview & Validation</h3>
+                    
+                    <div id="json-validation-stats" class="validation-stats" style="display: none;">
+                        <div id="json-valid-count" class="stat-item stat-valid">
+                            <i class="fas fa-check-circle"></i> <span id="json-valid-count-val">0</span> valid
+                        </div>
+                        <div id="json-invalid-count" class="stat-item stat-invalid">
+                            <i class="fas fa-times-circle"></i> <span id="json-invalid-count-val">0</span> invalid
+                        </div>
+                        <div id="json-photo-count" class="stat-item stat-info">
+                            <i class="fas fa-camera"></i> <span id="json-photo-count-val">0</span> with photos
+                        </div>
+                    </div>
+                    
+                    <div id="json-validation-summary" class="validation-summary"></div>
+                    
+                    <div id="json-preview-content" class="json-preview-content" style="max-height: 200px; overflow: auto; background: #f8f9fa; padding: 1rem; border-radius: var(--border-radius-sm); margin: 1rem 0;"></div>
+                    
+                    <div id="json-preview-actions" class="btn-group" style="margin-top: 1.5rem;">
+                        <button id="confirm-json-import" class="btn btn-primary">
+                            <i class="fas fa-check"></i> Confirm Import
+                        </button>
+                        <button id="cancel-json-import" class="btn btn-outline">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+                
                 <div id="import-status" class="status-message" style="display: none; margin-top: 1.5rem;"></div>
             </div>
-
-<!-- Add this after the CSV preview section (around line 679-680) -->
-<div id="json-preview-section" class="csv-preview-section" style="display: none;">
-    <h3><i class="fas fa-file-code"></i> JSON Preview & Validation</h3>
-    
-    <div id="json-validation-stats" class="validation-stats" style="display: none;">
-        <div id="json-valid-count" class="stat-item stat-valid">
-            <i class="fas fa-check-circle"></i> <span id="json-valid-count-val">0</span> valid
-        </div>
-        <div id="json-invalid-count" class="stat-item stat-invalid">
-            <i class="fas fa-times-circle"></i> <span id="json-invalid-count-val">0</span> invalid
-        </div>
-        <div id="json-photo-count" class="stat-item stat-info">
-            <i class="fas fa-camera"></i> <span id="json-photo-count-val">0</span> with photos
-        </div>
-    </div>
-    
-    <div id="json-validation-summary" class="validation-summary"></div>
-    
-    <div id="json-preview-content" class="json-preview-content" style="max-height: 200px; overflow: auto; background: #f8f9fa; padding: 1rem; border-radius: var(--border-radius-sm); margin: 1rem 0;"></div>
-    
-    <div id="json-preview-actions" class="btn-group" style="margin-top: 1.5rem;">
-        <button id="confirm-json-import" class="btn btn-primary">
-            <i class="fas fa-check"></i> Confirm Import
-        </button>
-        <button id="cancel-json-import" class="btn btn-outline">
-            <i class="fas fa-times"></i> Cancel
-        </button>
-    </div>
-</div>
 
             <!-- Export Section -->
             <div class="form-section export-options">
@@ -1842,17 +1861,17 @@
                         </label>
                     </div>
                     <div class="export-option">
+                        <input type="radio" id="export-json" name="export-format" value="json" aria-label="Export as JSON">
+                        <label for="export-json">
+                            <i class="fas fa-file-code"></i> JSON (Full data with photos)
+                        </label>
+                    </div>
+                    <div class="export-option">
                         <input type="checkbox" id="enable-batch-selection" aria-label="Enable batch selection">
                         <label for="enable-batch-selection">
                             <i class="fas fa-list-check"></i> Select specific observations
                         </label>
                     </div>
-<div class="export-option">
-    <input type="radio" id="export-json" name="export-format" value="json" aria-label="Export as JSON">
-    <label for="export-json">
-        <i class="fas fa-file-code"></i> JSON (Full data with photos)
-    </label>
-</div>
                 </div>
 
                 <div class="export-option-group">
@@ -4017,37 +4036,13 @@ const EcoLens = {
             });
         }
 
-const photoRemoveBtn = document.getElementById('photo-remove');
-if (photoRemoveBtn) {
-    photoRemoveBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.removePhoto();
-    });
-}
-
-// In setupEventListeners() method, add:
-const previewJSONBtn = document.createElement('button');
-previewJSONBtn.id = 'preview-json-import';
-previewJSONBtn.className = 'btn btn-outline';
-previewJSONBtn.innerHTML = '<i class="fas fa-eye"></i> Preview JSON Import';
-previewJSONBtn.style.marginTop = '1rem';
-
-const importSection = document.querySelector('.import-section .form-group');
-if (importSection) {
-    importSection.appendChild(previewJSONBtn);
-    
-    previewJSONBtn.addEventListener('click', () => {
-        this.handlePreviewJSONImport();
-    });
-}
-
-// Also add the cancel button listener
-const cancelJSONBtn = document.getElementById('cancel-json-import');
-if (cancelJSONBtn) {
-    cancelJSONBtn.addEventListener('click', () => {
-        this.hideJSONPreview();
-    });
-}
+        const photoRemoveBtn = document.getElementById('photo-remove');
+        if (photoRemoveBtn) {
+            photoRemoveBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.removePhoto();
+            });
+        }
 
         document.querySelectorAll('input[name="equipment"]').forEach(checkbox => {
             checkbox.addEventListener('change', (e) => {
@@ -4388,7 +4383,7 @@ if (cancelJSONBtn) {
         reader.onload = (e) => {
             try {
                 const previewBtn = document.getElementById('preview-json-import');
-                const originalText = previewBtn ? previewBtn.textContent : 'Preview Import';
+                const originalText = previewBtn ? previewBtn.textContent : 'Preview JSON Import';
                 if (previewBtn) {
                     previewBtn.innerHTML = '<span class="loading"></span> Validating...';
                     previewBtn.disabled = true;
@@ -4422,7 +4417,7 @@ if (cancelJSONBtn) {
                 console.error('Preview error details:', error);
                 const previewBtn = document.getElementById('preview-json-import');
                 if (previewBtn) {
-                    previewBtn.textContent = '👁️ Preview Import';
+                    previewBtn.textContent = '👁️ Preview JSON Import';
                     previewBtn.disabled = false;
                 }
                 this.showStatus(`Validation failed: ${error.message}`, 'error', 'export');
@@ -4433,7 +4428,7 @@ if (cancelJSONBtn) {
         reader.onerror = () => {
             const previewBtn = document.getElementById('preview-json-import');
             if (previewBtn) {
-                previewBtn.textContent = '👁️ Preview Import';
+                previewBtn.textContent = '👁️ Preview JSON Import';
                 previewBtn.disabled = false;
             }
             this.showStatus('Error reading file. Please try again.', 'error', 'export');
